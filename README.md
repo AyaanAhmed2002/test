@@ -4,7 +4,7 @@
 
 A production-quality FastAPI service that accepts digital supplier invoice PDFs, extracts eight structured header fields, assigns deterministic confidence scores to each field, and returns actionable warnings for ambiguous or non-invoice documents.
 
-**No Docker required.** The project runs from a Python virtual environment with a single documented startup command. Docker is provided as an optional convenience only.
+The project runs from a Python virtual environment with a single documented startup command. A Docker image and Docker Compose file are also provided for containerised deployment.
 
 ---
 
@@ -22,7 +22,7 @@ A production-quality FastAPI service that accepts digital supplier invoice PDFs,
 10. [Synthetic Test Data](#synthetic-test-data)
 11. [Known Vendors](#known-vendors)
 12. [Design Decisions & Trade-offs](#design-decisions--trade-offs)
-13. [Docker (Optional)](#docker-optional)
+13. [Docker & Docker Compose](#docker--docker-compose)
 
 ---
 
@@ -32,15 +32,15 @@ A production-quality FastAPI service that accepts digital supplier invoice PDFs,
 
 ### Windows
 ```bat
-git clone <repo-url>
-cd Bruviti_Assignment
+git clone https://github.com/AyaanAhmed2002/Bruviti_Use_Case_3_Invoice_Field_Extraction.git
+cd Bruviti_Use_Case_3_Invoice_Field_Extraction
 setup.bat
 ```
 
 ### Linux / macOS
 ```bash
-git clone <repo-url>
-cd Bruviti_Assignment
+git clone https://github.com/AyaanAhmed2002/Bruviti_Use_Case_3_Invoice_Field_Extraction.git
+cd Bruviti_Use_Case_3_Invoice_Field_Extraction
 chmod +x setup.sh && ./setup.sh
 ```
 
@@ -50,7 +50,7 @@ Both scripts create the virtual environment, install all pinned dependencies, ge
 265 passed, 6 warnings in ~2.5s
 ```
 
-### Start the server
+### Option A — Virtual environment (local)
 ```bat
 REM Windows
 .venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -60,7 +60,12 @@ REM Windows
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Open `http://127.0.0.1:8000` to use the web UI.
+### Option B — Docker Compose (recommended for deployment)
+```bash
+docker compose up -d --build
+```
+
+Both methods expose the service on `http://127.0.0.1:8000`.
 
 ---
 
@@ -176,7 +181,8 @@ Bruviti_Assignment/
 ├── requirements.txt            # All direct dependencies, fully pinned
 ├── setup.bat                   # Windows one-command fresh-clone bootstrap
 ├── setup.sh                    # Linux / macOS one-command bootstrap
-├── Dockerfile                  # Optional — not required to run the project
+├── Dockerfile                  # Multi-stage Docker image
+├── docker-compose.yml          # Single-command container startup
 ├── .dockerignore
 ├── .gitignore
 └── README.md
@@ -426,13 +432,35 @@ They are calculated from the strength of extraction signals (exact label match >
 
 ---
 
-## Docker (Optional)
+## Docker & Docker Compose
 
-Docker is **not required** to run or test this project. If you want to containerize it:
+### Using Docker Compose (recommended)
 
 ```bash
-docker build -t invoice-extractor .
-docker run -p 8000:8000 invoice-extractor
+# Build the image and start the container in the background
+docker compose up -d --build
+
+# Check status (including health-check result)
+docker compose ps
+
+# Tail live logs
+docker compose logs -f
+
+# Stop and remove the container
+docker compose down
 ```
 
-The `Dockerfile` in the repository generates the test data at build time and starts the server on port 8000. The application is fully functional without Docker.
+The service is available at `http://localhost:8000` once the container is healthy.
+
+### Using plain Docker
+
+```bash
+docker build -t bruviti-invoice-extractor .
+docker run -d -p 8000:8000 --name invoice-extractor bruviti-invoice-extractor
+```
+
+### What the image contains
+
+The `Dockerfile` installs all runtime dependencies, copies `app/`, `templates/`, `static/`, and `scripts/`, generates the synthetic test dataset at build time, and starts uvicorn on port 8000. The `.dockerignore` excludes `.venv/`, `tests/`, `testdata/` source PDFs, and all dev/docs files to keep the image lean.
+
+**Repository:** <https://github.com/AyaanAhmed2002/Bruviti_Use_Case_3_Invoice_Field_Extraction>
