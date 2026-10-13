@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice Field Extractor – Bruviti</title>
+  <meta name="description" content="Upload a supplier invoice PDF and extract structured header fields instantly." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <span class="logo-icon">🧾</span>
+          <span class="logo-text">InvoiceExtractor</span>
+        </div>
+        <span class="badge">Bruviti 2026</span>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="main">
+
+      <!-- Upload card -->
+      <section class="card upload-card" id="upload-section">
+        <h1 class="card-title">Extract Invoice Fields</h1>
+        <p class="card-subtitle">Upload a supplier invoice PDF to extract structured data instantly – fully offline, no data leaves your machine.</p>
+
+        <form id="upload-form" class="upload-form" enctype="multipart/form-data">
+          <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Click or drop a PDF file here">
+            <input type="file" id="file-input" name="file" accept="application/pdf" class="file-input" />
+            <div class="drop-zone-content">
+              <span class="drop-icon">📄</span>
+              <p class="drop-text">Drag & drop a PDF here, or <span class="link">click to browse</span></p>
+              <p class="drop-hint">Max 10 MB · PDF only · Text layer required</p>
+            </div>
+            <div class="selected-file" id="selected-file" hidden>
+              <span class="file-icon">✅</span>
+              <span id="file-name-display"></span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+            <span class="btn-text">Extract Fields</span>
+            <span class="btn-spinner" hidden>⟳</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Results card (hidden until extraction) -->
+      <section class="card results-card" id="results-section" hidden>
+        <div class="results-header">
+          <h2 class="card-title">Extraction Results</h2>
+          <button class="btn btn-ghost" id="new-upload-btn">← New Upload</button>
+        </div>
+
+        <!-- Status bar -->
+        <div class="status-bar" id="status-bar"></div>
+
+        <!-- Warnings -->
+        <div class="warnings-panel" id="warnings-panel" hidden>
+          <h3 class="panel-title">⚠ Warnings</h3>
+          <ul class="warnings-list" id="warnings-list"></ul>
+        </div>
+
+        <!-- Fields grid -->
+        <div class="fields-grid" id="fields-grid"></div>
+
+        <!-- Raw JSON toggle -->
+        <details class="json-panel">
+          <summary class="json-summary">View raw JSON response</summary>
+          <pre class="json-pre" id="raw-json"></pre>
+        </details>
+      </section>
+
+      <!-- Error card -->
+      <section class="card error-card" id="error-section" hidden>
+        <div class="error-icon">❌</div>
+        <h2 class="error-title" id="error-title">Extraction failed</h2>
+        <p class="error-msg" id="error-msg"></p>
+        <button class="btn btn-ghost" id="error-retry-btn">← Try Again</button>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <p>Bruviti Campus Drive 2026 · Use Case 3 · Invoice Field Extraction · Fully offline</p>
+    </footer>
+  </div>
+
+  <script>
+    // ── DOM refs ───────────────────────────────────────────────────────────────
+    const form         = document.getElementById('upload-form');
+    const fileInput    = document.getElementById('file-input');
+    const dropZone     = document.getElementById('drop-zone');
+    const selectedFile = document.getElementById('selected-file');
+    const fileDisplay  = document.getElementById('file-name-display');
+    const submitBtn    = document.getElementById('submit-btn');
+    const uploadSec    = document.getElementById('upload-section');
+    const resultsSec   = document.getElementById('results-section');
+    const errorSec     = document.getElementById('error-section');
+    const statusBar    = document.getElementById('status-bar');
+    const warningsPanel = document.getElementById('warnings-panel');
+    const warningsList = document.getElementById('warnings-list');
+    const fieldsGrid   = document.getElementById('fields-grid');
+    const rawJson      = document.getElementById('raw-json');
+    const newUploadBtn = document.getElementById('new-upload-btn');
+    const errorTitle   = document.getElementById('error-title');
+    const errorMsg     = document.getElementById('error-msg');
+    const errorRetry   = document.getElementById('error-retry-btn');
+
+    const FIELD_LABELS = {
+      vendor:         { label: 'Vendor',          icon: '🏢' },
+      invoice_number: { label: 'Invoice Number',  icon: '🔢' },
+      invoice_date:   { label: 'Invoice Date',    icon: '📅' },
+      due_date:       { label: 'Due Date',        icon: '⏰' },
+      currency:       { label: 'Currency',        icon: '💱' },
+      subtotal:       { label: 'Subtotal',        icon: '💰' },
+      tax:            { label: 'Tax',             icon: '📊' },
+      total:          { label: 'Total',           icon: '✅' },
+    };
+
+    // ── File selection ─────────────────────────────────────────────────────────
+    function handleFile(file) {
+      if (!file || file.type !== 'application/pdf') {
+        alert('Please select a PDF file.');
+        return;
+      }
+      fileDisplay.textContent = file.name;
+      selectedFile.hidden = false;
+      dropZone.querySelector('.drop-zone-content').hidden = true;
+      submitBtn.disabled = false;
+    }
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) handleFile(fileInput.files[0]);
+    });
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) { fileInput.files = e.dataTransfer.files; handleFile(file); }
+    });
+
+    // ── Form submit ────────────────────────────────────────────────────────────
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      // Show loading state
+      submitBtn.querySelector('.btn-text').hidden = true;
+      submitBtn.querySelector('.btn-spinner').hidden = false;
+      submitBtn.disabled = true;
+
+      const fd = new FormData();
+      fd.append('file', file);
+
+      try {
+        const res  = await fetch('/extract', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(`HTTP ${res.status}`, data.detail || 'Extraction failed.');
+          return;
+        }
+
+        showResults(data);
+      } catch (err) {
+        showError('Network error', err.message || 'Could not reach the server.');
+      } finally {
+        submitBtn.querySelector('.btn-text').hidden = false;
+        submitBtn.querySelector('.btn-spinner').hidden = true;
+        submitBtn.disabled = false;
+      }
+    });
+
+    // ── Render results ─────────────────────────────────────────────────────────
+    function confClass(score) {
+      if (score >= 0.85) return 'conf-high';
+      if (score >= 0.50) return 'conf-mid';
+      return 'conf-low';
+    }
+
+    function confBar(score) {
+      const pct = Math.round(score * 100);
+      const cls = confClass(score);
+      return `<div class="conf-bar-wrap"><div class="conf-bar ${cls}" style="width:${pct}%"></div></div><span class="conf-label">${pct}%</span>`;
+    }
+
+    function formatValue(key, value) {
+      if (value === null || value === undefined) return '<span class="null-val">—</span>';
+      if (key === 'subtotal' || key === 'tax' || key === 'total') return value.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+      return String(value);
+    }
+
+    function showResults(data) {
+      uploadSec.hidden = true;
+      errorSec.hidden = true;
+      resultsSec.hidden = false;
+
+      // Warnings
+      const warns = data.warnings || [];
+      if (warns.length > 0) {
+        warningsPanel.hidden = false;
+        warningsList.innerHTML = warns.map(w => `<li>${escHtml(w)}</li>`).join('');
+      } else {
+        warningsPanel.hidden = true;
+      }
+
+      // Fields
+      const fields = ['vendor','invoice_number','invoice_date','due_date','currency','subtotal','tax','total'];
+      fieldsGrid.innerHTML = fields.map(key => {
+        const meta  = FIELD_LABELS[key];
+        const score = data.confidence[key] ?? 0;
+        const val   = data[key];
+        return `
+          <div class="field-card">
+            <div class="field-header">
+              <span class="field-icon">${meta.icon}</span>
+              <span class="field-name">${meta.label}</span>
+            </div>
+            <div class="field-value">${formatValue(key, val)}</div>
+            <div class="field-conf">${confBar(score)}</div>
+          </div>`;
+      }).join('');
+
+      // Raw JSON
+      rawJson.textContent = JSON.stringify(data, null, 2);
+    }
+
+    function showError(title, msg) {
+      uploadSec.hidden = true;
+      resultsSec.hidden = true;
+      errorSec.hidden = false;
+      errorTitle.textContent = title;
+      errorMsg.textContent = msg;
+    }
+
+    function resetToUpload() {
+      resultsSec.hidden = true;
+      errorSec.hidden = true;
+      uploadSec.hidden = false;
+      fileInput.value = '';
+      selectedFile.hidden = true;
+      dropZone.querySelector('.drop-zone-content').hidden = false;
+      submitBtn.disabled = true;
+      warningsPanel.hidden = true;
+      warningsList.innerHTML = '';
+      fieldsGrid.innerHTML = '';
+    }
+
+    newUploadBtn.addEventListener('click', resetToUpload);
+    errorRetry.addEventListener('click', resetToUpload);
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# Virtual environment & Python cache
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Pytest & coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Test data & test suite (not needed at runtime)
+testdata/
+tests/
+bruviti_test_invoices/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Docs & setup scripts (not needed in container)
+README.md
+HANDOVER_STATUS.md
+setup.bat
+setup.sh
+pytest.ini

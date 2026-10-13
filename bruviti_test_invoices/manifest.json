@@ -1,0 +1,42 @@
+[
+  {
+    "file": "01_blue_harbour_label_variants.pdf",
+    "purpose": "UK vendor, alternate labels, Net 14, explicit GBP"
+  },
+  {
+    "file": "02_kestrel_us_date_and_currency.pdf",
+    "purpose": "US month-first date, currency symbols, due date derived from 30 days"
+  },
+  {
+    "file": "03_meridian_german_format.pdf",
+    "purpose": "German labels, dotted/ISO dates, comma decimal separators, EUR"
+  },
+  {
+    "file": "04_sakura_jpy_no_decimals.pdf",
+    "purpose": "JPY amounts displayed without decimals"
+  },
+  {
+    "file": "05_pinecrest_indian_grouping.pdf",
+    "purpose": "Indian date format, INR, Indian vendor"
+  },
+  {
+    "file": "06_unknown_vendor.pdf",
+    "purpose": "Unknown vendor, explicit INR, no printed due date"
+  },
+  {
+    "file": "07_non_invoice_quotation.pdf",
+    "purpose": "Quotation must be classified as non-invoice"
+  },
+  {
+    "file": "08_conflicting_dates_and_totals.pdf",
+    "purpose": "Printed due date conflicts with Net 30; arithmetic mismatch warning"
+  },
+  {
+    "file": "09_missing_fields_and_currency_inference.pdf",
+    "purpose": "Missing invoice number and tax; currency omitted from totals"
+  },
+  {
+    "file": "10_unknown_vendor_ambiguous_date.pdf",
+    "purpose": "Unknown vendor with ambiguous invoice date and multiple date labels"
+  }
+]
